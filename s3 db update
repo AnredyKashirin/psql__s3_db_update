@@ -1,0 +1,24 @@
+stages:
+  - update_database_dev
+
+update_database_dev:
+  stage: update_database_dev
+  script:
+    - echo "Clearing the database"
+    - psql $DB_DEV/postgres -c "drop database lk2"
+    - psql $DB_DEV/postgres -c "create database lk2 owner lk2"
+    
+    - echo "Downloading the latest database dump from S3"
+    - aws s3 ls s3://your-s3-bucket/path/to/db_dumps/ --recursive --human-readable --summarize | sort -k1,2 | tail -n1 | awk '{print $4}' | xargs -I '{}' aws s3 cp s3://your-s3-bucket/path/to/db_dumps/'{}' db_dump.gz
+
+    - echo "Unpacking the database dump"
+    - gunzip db_dump.gz
+    
+    - echo "Restoring the database"
+    - psql -U lk2 -d lk2 < 
+  when: manual
+  only:
+    - develop
+  resource_group:
+  tags:
+	- kubernetes-cluster8
